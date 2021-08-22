@@ -10,11 +10,13 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 )
 
 var (
 	serieNumber, lottoNumber int
 	fileSource               string
+	wg                       sync.WaitGroup
 )
 
 func main() {
@@ -28,6 +30,7 @@ func main() {
 		file, err := os.Open(fileSource)
 		if err != nil {
 			fmt.Println(err)
+			return
 		}
 		defer file.Close()
 
@@ -38,18 +41,23 @@ func main() {
 
 			serieNumber, _ = strconv.Atoi(result[0])
 			lottoNumber, _ = strconv.Atoi(result[1])
-			checkLot(serieNumber, lottoNumber)
+			wg.Add(1)
+			go checkLot(serieNumber, lottoNumber)
 		}
 
 		if err := scanner.Err(); err != nil {
 			fmt.Println(err)
 		}
 	} else {
-		checkLot(serieNumber, lottoNumber)
+		wg.Add(1)
+		go checkLot(serieNumber, lottoNumber)
 	}
+
+	wg.Wait()
 }
 
 func checkLot(serieNumber, lottoNumber int) {
+	defer wg.Done()
 	// Crate request
 	request := fmt.Sprintf("https://www.bingolotto.se/ratta-lotten/?S=%d&L=%d", serieNumber, lottoNumber)
 
@@ -64,8 +72,14 @@ func checkLot(serieNumber, lottoNumber int) {
 
 	// Printout the output when match the regex from the response
 	submatchall := re.FindAllStringSubmatch(string(respondBody), -1)
-	for _, element := range submatchall {
-		fmt.Println(element[1])
+
+	// Check if the returned value contains "tyvärr", in this case the output will be in red, otherwise green if you won :)
+	var terminalColor string
+	if strings.Contains(submatchall[1][1], "tyvärr") {
+		terminalColor = "\033[31m"
+	} else {
+		terminalColor = "\033[32m"
 	}
-	fmt.Println()
+
+	fmt.Printf("%s%s\n%s\n\n", terminalColor, submatchall[0][1], submatchall[1][1])
 }
