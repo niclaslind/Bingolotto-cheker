@@ -73,13 +73,18 @@ func checkLot(serieNumber, lottoNumber int) {
 	// Printout the output when match the regex from the response
 	submatchall := re.FindAllStringSubmatch(string(respondBody), -1)
 
+	var winString string
+	re_success := regexp.MustCompile(`<div class="alert alert-success">(.|\n)*?<\/div>`)
+
 	// Check if the returned value contains "tyvärr", in this case the output will be in red, otherwise green if you won :)
 	var terminalColor string
-	if strings.Contains(submatchall[1][1], "tyvärr") {
-		terminalColor = "\033[31m"
-	} else {
+	if strings.Contains(submatchall[1][1], "grattis") {
 		terminalColor = "\033[32m"
+		submatchall1 := re_success.FindAllStringSubmatch(string(respondBody), -1)
+		winString = submatchall1[0][0]
+	} else if strings.Contains(submatchall[1][1], "tyvärr") {
+		terminalColor = "\033[31m"
 	}
 
-	fmt.Printf("%s%s\n%s\n\n", terminalColor, submatchall[0][1], submatchall[1][1])
+	fmt.Printf("%s%s\n%s\n%s\n\n", terminalColor, submatchall[0][1], submatchall[1][1], winString)
 }
